@@ -99,7 +99,7 @@ function DisplayPosition({ map, setPolyline }) {
     );
 }
 
-function Menu() {
+function Carte() {
     const [map, setMap] = useState(null)
     const [polyline, setPolyline] = useState([
         [51.505, -0.09],
@@ -132,4 +132,4 @@ function Menu() {
     )
 }
 
-export default Menu;
+export default Carte;
