@@ -1,6 +1,5 @@
 import { useState, useMemo, useCallback, useRef } from "react";
-
-import { MapContainer, TileLayer, Polyline, Marker,Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Polyline, Marker, Popup } from 'react-leaflet';
 import "./App.css";
 import "leaflet/dist/leaflet.css";
 
@@ -9,11 +8,9 @@ const zoom = 13;
 const limeOptions = { color: 'lime' };
 
 function Carte() {
-    const [map, setMap] = useState(null)
-    const [polyline, setPolyline] = useState([center ]);
-
-    //const [position, setPosition] = useState(() => map.getCenter())
-    const [routeList, setRouteList] = useState([{ latitude: center.at(0), longitude: center.at(1) }]);
+    const [map, setMap] = useState(null);
+    const [polyline, setPolyline] = useState([center]);
+    const [routeList, setRouteList] = useState([{ latitude: center[0], longitude: center[1] }]);
     const mapRef = useRef(null);
 
     const handleRouteChange = (e, index) => {
@@ -21,33 +18,30 @@ function Carte() {
         const list = [...routeList];
         list[index][name] = value;
         setRouteList(list);
-        if (routeList.length > 1) {
-            // Update polyline directly
-            const updatedPolyline = routeList.filter(item => item.latitude!== "" && item.longitude!== "" && item.longitude!== "-").map(item => [item.latitude, item.longitude]);
-            setPolyline(updatedPolyline);
-            console.log(updatedPolyline.at(-1), 'edit ways ',updatedPolyline)
-            if (map.current) {
-                console.log("Edited, fly to last point")
-                map.current.flyTo(updatedPolyline.at(-1), zoom);
-            }
 
+        if (routeList.length > 1) {
+            const updatedPolyline = routeList.filter(item => item.latitude !== "" && item.longitude !== "" && item.longitude !== "-").map(item => [parseFloat(item.latitude), parseFloat(item.longitude)]);
+            setPolyline(updatedPolyline);
+
+            // Check if map is available before calling flyTo
+            if (map) {
+                map.flyTo(updatedPolyline.at(-1), zoom);
+            }
         }
-    }
+    };
 
     const handleRouteRemove = (index) => {
         const list = [...routeList];
         list.splice(index, 1);
         setRouteList(list);
-            // Update polyline directly
-        const updatedPolyline = list.filter(item => item.latitude!== "" && item.longitude!== "" && item.longitude!== "-").map(item => [item.latitude, item.longitude]);
-        setPolyline(updatedPolyline);        
-        console.log(updatedPolyline.at(-1), 'remove points ',updatedPolyline)
-        if (map.current) {
-            console.log("removed, fly to last point")
-            map.current.flyTo(updatedPolyline.at(-1), zoom);
-        }
 
-        
+        const updatedPolyline = list.filter(item => item.latitude !== "" && item.longitude !== "" && item.longitude !== "-").map(item => [parseFloat(item.latitude), parseFloat(item.longitude)]);
+        setPolyline(updatedPolyline);
+
+        // Check if map is available before calling flyTo
+        if (map) {
+            map.flyTo(updatedPolyline.at(-1), zoom);
+        }
     };
 
     const handleRouteAdd = () => {
@@ -55,21 +49,20 @@ function Carte() {
     };
 
     return (
-        
         <div>
-            <MapContainer 
-            center={center}
-            zoom={zoom}
-            scrollWheelZoom={false}
-            style={{ height: '600px', width: '800px', display: 'table-cell' }}
-            ref={setMap}
-        >
-            <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            <DraggableMarker onDragEnd={() => map.current?.getCenter()} />
-            <Polyline pathOptions={limeOptions} positions={polyline} key={JSON.stringify(polyline)} />
+            <MapContainer
+                center={center}
+                zoom={zoom}
+                scrollWheelZoom={false}
+                style={{ height: '600px', width: '800px', display: 'table-cell' }}
+                whenCreated={setMap} // <-- Set the map instance here
+            >
+                <TileLayer
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                <DraggableMarker onDragEnd={() => map?.getCenter()} />
+                <Polyline pathOptions={limeOptions} positions={polyline} key={JSON.stringify(polyline)} />
             </MapContainer>
             <form className="App" autoComplete="off">
                 <div className="form-field">
@@ -108,7 +101,7 @@ function Carte() {
                                 />
                             </div>
                             <div className="third-division">
-                                {routeList.length!== 1 && (
+                                {routeList.length !== 1 && (
                                     <button
                                         type="button"
                                         onClick={() => handleRouteRemove(index)}
@@ -126,42 +119,45 @@ function Carte() {
     );
 }
 
-
 function DraggableMarker({ onDragEnd }) {
-    const [draggable, setDraggable] = useState(true)
-    const [position, setPosition] = useState(center)
-    const markerRef = useRef(null)
+    const [draggable, setDraggable] = useState(true);
+    const [position, setPosition] = useState(center);
+    const markerRef = useRef(null);
+
     const eventHandlers = useMemo(
-      () => ({
-        dragend() {
-          const marker = markerRef.current
-          if (marker != null) {
-            setPosition(marker.getLatLng())
-            if (onDragEnd) {
-                onDragEnd();
-            }
-          }
-        },
-      }),
-      [],
-    )
+        () => ({
+            dragend() {
+                const marker = markerRef.current;
+                if (marker != null) {
+                    setPosition(marker.getLatLng());
+                    if (onDragEnd) {
+                        onDragEnd();
+                    }
+                }
+            },
+        }),
+        [onDragEnd],
+    );
+
     const toggleDraggable = useCallback(() => {
-      setDraggable((d) => !d)
-    }, [])
+        setDraggable((d) => !d);
+    }, []);
+
     return (
         <Marker
-          draggable={draggable}
-          eventHandlers={eventHandlers}
-          position={position}
-          ref={markerRef}>
-          <Popup minWidth={90}>
-            <span onClick={toggleDraggable}>
-              {draggable
-                ? 'Marker is draggable'
-                : 'Click here to make marker draggable'}
-            </span>
-          </Popup>
+            draggable={draggable}
+            eventHandlers={eventHandlers}
+            position={position}
+            ref={markerRef}>
+            <Popup minWidth={90}>
+                <span onClick={toggleDraggable}>
+                    {draggable
+                        ? 'Marker is draggable'
+                        : 'Click here to make marker draggable'}
+                </span>
+            </Popup>
         </Marker>
-      );
+    );
 }
+
 export default Carte;
